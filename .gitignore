@@ -69,6 +69,14 @@ test-ck
 __pycache__
 prompt.md
 
+# API specific
+uploads/
+logs/
+
+# Test images (keep README, ignore actual images)
+test-images/*
+!test-images/README.md
+
 # Gemini CLI settings (symlink to .claude/.mcp.json)
 .gemini/settings.json
 .claude/settings.bak.json
