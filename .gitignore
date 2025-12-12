@@ -77,6 +77,13 @@ logs/
 gcp-service-account-key.json
 *-service-account-key.json
 
+# Claude Code configuration
+.claude/
+
+# Test folders
+tests/
+test-*/
+
 # Test images (keep README, ignore actual images)
 test-images/*
 !test-images/README.md
