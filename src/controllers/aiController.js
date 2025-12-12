@@ -4,7 +4,7 @@
  */
 
 const geminiService = require('../services/geminiService');
-const imagenService = require('../services/imagenService');
+const virtualTravelImageService = require('../services/virtualTravelImageService');
 const { successResponse } = require('../utils/responseFormatter');
 const { ValidationError } = require('../utils/errorTypes');
 const logger = require('../utils/logger');
@@ -160,13 +160,10 @@ const generateVirtualTravel = async (req, res, next) => {
       size: req.file.size,
     });
 
-    // Generate virtual travel photos using Imagen
-    const generatedImages = await imagenService.generateVirtualTravel(
-      req.file.path,
-      destination
-    );
+    // CORRECTED: Use new Imagen 4 service (Vertex AI REST API)
+   const result = await virtualTravelImageService.generateVirtualTravel(req.file.path, destination);
 
-    if (!generatedImages || generatedImages.length === 0) {
+    if (!result.images || result.images.length === 0) {
       throw new Error('Failed to generate virtual travel images');
     }
 
@@ -175,19 +172,24 @@ const generateVirtualTravel = async (req, res, next) => {
     const outputDir = path.join(process.env.UPLOAD_DIR || './uploads', 'virtual-travel');
     await fs.mkdir(outputDir, { recursive: true });
 
-    for (let i = 0; i < generatedImages.length; i++) {
+    for (let i = 0; i < result.images.length; i++) {
       const outputFilename = `virtual-${userId}-${Date.now()}-${i}.jpg`;
       const outputPath = path.join(outputDir, outputFilename);
-      await fs.writeFile(outputPath, generatedImages[i]);
+      await fs.writeFile(outputPath, result.images[i]);
       savedImages.push(`/uploads/virtual-travel/${outputFilename}`);
     }
 
-    // Save first generated image to database
+    // Save to database with metadata
     const virtualTrip = await VirtualTrip.create({
       userId,
       originalImageUrl: `/uploads/selfies/${req.file.filename}`,
       generatedImageUrl: savedImages[0], // Use first generated image as primary
       destinationName: destination,
+      metadata: JSON.stringify({
+        ...result.metadata,
+        originalFileName: req.file.filename,
+        fileSize: req.file.size
+      })
     });
 
     logger.info('Virtual travel photo generated successfully:', {
@@ -195,15 +197,17 @@ const generateVirtualTravel = async (req, res, next) => {
       destination,
       tripId: virtualTrip.id,
       imageCount: savedImages.length,
+      totalCost: result.metadata.totalCost
     });
 
-    // Return all generated variations
+    // Return all generated variations with metadata
     const response = {
       id: virtualTrip.id,
       destination,
       originalImage: virtualTrip.originalImageUrl,
       generatedImages: savedImages, // Return all 4 variations
       primaryImage: savedImages[0],
+      metadata: result.metadata,
       createdAt: virtualTrip.createdAt,
     };
 
@@ -276,13 +280,13 @@ const getVirtualTravelHistory = async (req, res, next) => {
 const getStatus = async (req, res, next) => {
   try {
     const geminiStatus = geminiService.getStatus();
-    const imagenStatus = imagenService.getStatus();
+    const virtualTravelStatus = virtualTravelImageService.getStatus();
 
     return successResponse(
       res,
       {
         gemini: geminiStatus,
-        imagen: imagenStatus,
+        imagen: virtualTravelStatus, // Keep 'imagen' key for backward compatibility
       },
       'AI service status retrieved',
       200

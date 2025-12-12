@@ -19,7 +19,7 @@ export default function BlogDetail() {
 
   const fetchArticle = async () => {
     try {
-      const response = await api.get(`/api/articles/${id}`);
+      const response = await api.get(`/articles/${id}`);
       setArticle(response.data.data);
     } catch (err) {
       console.error('Error fetching article:', err);
@@ -29,7 +29,10 @@ export default function BlogDetail() {
     }
   };
 
-  const getCategoryColor = (category) => {
+ const getCategoryColor = (category) => {
+    // Nếu category là object thì lấy .slug, nếu là chuỗi thì giữ nguyên
+    const slug = category?.slug || category;
+    
     const colors = {
       'du-lich': 'bg-blue-500/20 text-blue-300 border-blue-500/50',
       'am-thuc': 'bg-orange-500/20 text-orange-300 border-orange-500/50',
@@ -37,10 +40,17 @@ export default function BlogDetail() {
       'kinh-nghiem': 'bg-green-500/20 text-green-300 border-green-500/50',
       'dia-danh': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50'
     };
-    return colors[category] || 'bg-luxury-gold/20 text-luxury-gold border-luxury-gold/50';
+    return colors[slug] || 'bg-luxury-gold/20 text-luxury-gold border-luxury-gold/50';
   };
 
+  // Sửa hàm lấy tên (Lấy thuộc tính .name)
   const getCategoryName = (category) => {
+    // Nếu là object thì trả về tên thật
+    if (category && typeof category === 'object') {
+      return category.name;
+    }
+    
+    // Logic cũ (dự phòng)
     const names = {
       'du-lich': 'Du lịch',
       'am-thuc': 'Ẩm thực',
@@ -48,7 +58,7 @@ export default function BlogDetail() {
       'kinh-nghiem': 'Kinh nghiệm',
       'dia-danh': 'Địa danh'
     };
-    return names[category] || category;
+    return names[category] || category || 'Chưa phân loại';
   };
 
   const handleShare = () => {

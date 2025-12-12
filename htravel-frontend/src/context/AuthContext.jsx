@@ -122,6 +122,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isAuthenticated,
+    isAdmin: user?.role === 'admin', // Add role-based helper
     isLoading,
     login,
     register,

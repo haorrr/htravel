@@ -1,19 +1,31 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Camera, Mail, MapPin, Calendar, Edit2, Save, X } from 'lucide-react';
+// 1. Thêm import useNavigate và Map icon
+import { useNavigate } from 'react-router-dom';
+import { Camera, Mail, MapPin, Calendar, Edit2, Save, X, Map } from 'lucide-react';
+import toast from 'react-hot-toast';
 import GlassCard from '../components/common/GlassCard';
 import LuxuryButton from '../components/common/LuxuryButton';
 import LuxuryInput from '../components/common/LuxuryInput';
-import { authService } from '../services/auth';
-import api from '../services/api';
+import { useUserProfile, useUploadAvatar } from '../hooks/useUser';
+
+// Hàm hỗ trợ lấy full URL ảnh từ backend
+const getFullImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return `http://localhost:3000${path}`; 
+};
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
+  // 2. Khởi tạo navigate
+  const navigate = useNavigate();
+  
+  const { data: userData, isLoading, error: fetchError } = useUserProfile();
+  const user = userData?.data || userData;
+  const uploadAvatarMutation = useUploadAvatar();
+
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -26,33 +38,21 @@ export default function Profile() {
   const [avatarPreview, setAvatarPreview] = useState(null);
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      const response = await api.get('/api/user/profile');
-      const userData = response.data.data;
-      setUser(userData);
+    if (user) {
       setFormData({
-        name: userData.name || '',
-        bio: userData.bio || '',
-        phone: userData.phone || '',
-        location: userData.location || ''
+        name: user.name || '',
+        bio: user.bio || '',
+        phone: user.phone || '',
+        location: user.location || ''
       });
-    } catch (err) {
-      setError('Không thể tải thông tin người dùng');
-      console.error('Error fetching profile:', err);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [user]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setError('Kích thước ảnh không được vượt quá 5MB');
+        toast.error('Kích thước ảnh không được vượt quá 5MB');
         return;
       }
       setAvatarFile(file);
@@ -69,33 +69,18 @@ export default function Profile() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    setError('');
-    setSuccess('');
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('bio', formData.bio);
-      formDataToSend.append('phone', formData.phone);
-      formDataToSend.append('location', formData.location);
-
-      if (avatarFile) {
-        formDataToSend.append('avatar', avatarFile);
-      }
-
-      const response = await api.put('/api/user/profile', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      await uploadAvatarMutation.mutateAsync({
+        file: avatarFile,
+        profileData: formData
       });
 
-      setUser(response.data.data);
-      setSuccess('Cập nhật hồ sơ thành công!');
       setIsEditing(false);
       setAvatarFile(null);
       setAvatarPreview(null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể cập nhật hồ sơ');
+      console.error('Profile update failed:', err);
     } finally {
       setIsSaving(false);
     }
@@ -104,14 +89,13 @@ export default function Profile() {
   const handleCancel = () => {
     setIsEditing(false);
     setFormData({
-      name: user.name || '',
-      bio: user.bio || '',
-      phone: user.phone || '',
-      location: user.location || ''
+      name: user?.name || '',
+      bio: user?.bio || '',
+      phone: user?.phone || '',
+      location: user?.location || ''
     });
     setAvatarFile(null);
     setAvatarPreview(null);
-    setError('');
   };
 
   if (isLoading) {
@@ -125,7 +109,42 @@ export default function Profile() {
     );
   }
 
-  const displayAvatar = avatarPreview || user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=D4AF37&color=0A0A0A&size=200`;
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-luxury-black flex items-center justify-center px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center max-w-md"
+        >
+          <GlassCard className="p-8">
+            <div className="text-red-400 mb-4">
+              <X className="w-16 h-16 mx-auto" />
+            </div>
+            <h2 className="text-xl font-playfair text-white mb-2">
+              Không thể tải thông tin
+            </h2>
+            <p className="text-luxury-gray-100 font-philosopher mb-6">
+              Đã xảy ra lỗi khi tải thông tin hồ sơ. Vui lòng thử lại sau.
+            </p>
+            <LuxuryButton
+              variant="primary"
+              onClick={() => window.location.reload()}
+            >
+              Tải lại trang
+            </LuxuryButton>
+          </GlassCard>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const serverAvatarUrl = user?.avatarUrl
+    ? `${getFullImageUrl(user.avatarUrl)}?t=${user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now()}`
+    : null;
+
+  const displayAvatar = avatarPreview || serverAvatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=D4AF37&color=0A0A0A&size=200`;
 
   return (
     <div className="min-h-screen bg-luxury-black pt-24 pb-12 px-6">
@@ -145,27 +164,6 @@ export default function Profile() {
           </p>
         </motion.div>
 
-        {/* Messages */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-6"
-          >
-            <p className="text-red-300 font-philosopher">{error}</p>
-          </motion.div>
-        )}
-
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-6"
-          >
-            <p className="text-green-300 font-philosopher">{success}</p>
-          </motion.div>
-        )}
-
         {/* Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -180,10 +178,13 @@ export default function Profile() {
                   <img
                     src={displayAvatar}
                     alt={user?.name}
-                    className="w-40 h-40 rounded-full object-cover border-4 border-luxury-gold"
+                    className="w-40 h-40 rounded-full object-cover border-4 border-luxury-gold shadow-lg shadow-luxury-gold/20"
+                    onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'U')}&background=333&color=fff`;
+                    }}
                   />
                   {isEditing && (
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                       <Camera className="text-luxury-gold" size={32} />
                       <input
                         type="file"
@@ -208,16 +209,31 @@ export default function Profile() {
                   </p>
                 </div>
 
+                {/* 3. SỬA ĐOẠN NÀY: Thêm nút Lịch trình của tôi */}
                 {!isEditing ? (
-                  <LuxuryButton
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setIsEditing(true)}
-                    className="mt-6"
-                  >
-                    <Edit2 size={16} className="mr-2" />
-                    Chỉnh Sửa
-                  </LuxuryButton>
+                  <div className="flex flex-col gap-3 mt-6 w-full max-w-[200px]">
+                    {/* Nút Chỉnh sửa */}
+                    <LuxuryButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                      className="w-full"
+                    >
+                      <Edit2 size={16} className="mr-2" />
+                      Chỉnh Sửa
+                    </LuxuryButton>
+                    
+                    {/* Nút MỚI: Lịch trình của tôi */}
+                    <LuxuryButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => navigate('/my-trips')}
+                      className="w-full"
+                    >
+                      <Map size={16} className="mr-2" />
+                      Lịch trình của tôi
+                    </LuxuryButton>
+                  </div>
                 ) : (
                   <div className="flex gap-3 mt-6">
                     <LuxuryButton
@@ -242,7 +258,7 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* Info Section */}
+              {/* Info Section - Giữ nguyên */}
               <div className="flex-1">
                 <div className="space-y-6">
                   {isEditing ? (
@@ -266,7 +282,7 @@ export default function Profile() {
                           onChange={handleInputChange}
                           placeholder="Viết vài dòng về bạn..."
                           rows="4"
-                          className="w-full bg-transparent border-b-2 border-luxury-gray-400 text-white font-philosopher py-3 px-0 focus:outline-none focus:border-luxury-gold transition-colors resize-none"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg text-white font-philosopher py-3 px-4 focus:outline-none focus:border-luxury-gold transition-colors resize-none placeholder-gray-500"
                         />
                       </div>
                       <div>
@@ -290,30 +306,33 @@ export default function Profile() {
                     </>
                   ) : (
                     <>
-                      <div>
-                        <h3 className="text-luxury-gray-200 text-sm font-philosopher uppercase tracking-wider mb-2">
+                      <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                        <h3 className="text-luxury-gold text-xs font-bold uppercase tracking-wider mb-2">
                           Giới thiệu
                         </h3>
-                        <p className="text-white font-philosopher">
+                        <p className="text-gray-300 font-philosopher leading-relaxed">
                           {user?.bio || 'Chưa cập nhật'}
                         </p>
                       </div>
-                      <div>
-                        <h3 className="text-luxury-gray-200 text-sm font-philosopher uppercase tracking-wider mb-2">
-                          Số điện thoại
-                        </h3>
-                        <p className="text-white font-philosopher">
-                          {user?.phone || 'Chưa cập nhật'}
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-luxury-gray-200 text-sm font-philosopher uppercase tracking-wider mb-2 flex items-center gap-2">
-                          <MapPin size={14} />
-                          Vị trí
-                        </h3>
-                        <p className="text-white font-philosopher">
-                          {user?.location || 'Chưa cập nhật'}
-                        </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                          <h3 className="text-luxury-gold text-xs font-bold uppercase tracking-wider mb-2">
+                            Số điện thoại
+                          </h3>
+                          <p className="text-white font-philosopher">
+                            {user?.phone || 'Chưa cập nhật'}
+                          </p>
+                        </div>
+                        <div className="p-4 bg-white/5 rounded-lg border border-white/5">
+                          <h3 className="text-luxury-gold text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <MapPin size={14} />
+                            Vị trí
+                          </h3>
+                          <p className="text-white font-philosopher">
+                            {user?.location || 'Chưa cập nhật'}
+                          </p>
+                        </div>
                       </div>
                     </>
                   )}
@@ -323,36 +342,36 @@ export default function Profile() {
           </GlassCard>
         </motion.div>
 
-        {/* Stats Section */}
+        {/* Stats Section - Giữ nguyên */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
         >
-          <GlassCard className="p-6 text-center">
+          <GlassCard className="p-6 text-center hover:border-luxury-gold/50 transition-colors cursor-default">
             <div className="text-3xl font-playfair text-luxury-gold mb-2">
               {user?.checkinsCount || 0}
             </div>
-            <p className="text-luxury-gray-100 font-philosopher text-sm">
+            <p className="text-luxury-gray-100 font-philosopher text-sm uppercase tracking-wider">
               Địa điểm đã ghé thăm
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6 text-center">
+          <GlassCard className="p-6 text-center hover:border-luxury-gold/50 transition-colors cursor-default">
             <div className="text-3xl font-playfair text-luxury-gold mb-2">
               {user?.virtualTravelCount || 0}
             </div>
-            <p className="text-luxury-gray-100 font-philosopher text-sm">
+            <p className="text-luxury-gray-100 font-philosopher text-sm uppercase tracking-wider">
               Ảnh du lịch ảo
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6 text-center">
+          <GlassCard className="p-6 text-center hover:border-luxury-gold/50 transition-colors cursor-default">
             <div className="text-3xl font-playfair text-luxury-gold mb-2">
               {user?.landmarksIdentified || 0}
             </div>
-            <p className="text-luxury-gray-100 font-philosopher text-sm">
+            <p className="text-luxury-gray-100 font-philosopher text-sm uppercase tracking-wider">
               Địa danh nhận diện
             </p>
           </GlassCard>

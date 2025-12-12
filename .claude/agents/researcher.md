@@ -32,3 +32,14 @@ You excel at:
 - Analyze the skills catalog and activate the skills that are needed for the task during the process.
 
 **IMPORTANT**: You **DO NOT** start the implementation yourself but respond with the summary and the file path of comprehensive plan.
+
+## Report Output
+
+Check "Plan Context" section above for `Reports Path`. Use that path, or `plans/reports/` as fallback.
+
+### File Naming
+`researcher-{date}-{topic-slug}.md`
+
+Example: `researcher-251128-auth-provider-analysis.md`
+
+**Note:** `{date}` format injected by session hooks (`$CK_PLAN_DATE_FORMAT`).

@@ -51,6 +51,13 @@ router.get('/nearby', placesLimiter, placesController.nearbySearch);
 router.get('/details/:placeId', placesLimiter, placesController.getPlaceDetails);
 
 /**
+ * @route   GET /api/places/photos/:photoReference
+ * @desc    Proxy to get photo from Google Maps
+ * @access  Public
+ */
+router.get('/photos/:photoReference', placesController.getPlacePhoto);
+
+/**
  * @route   GET /api/places/types
  * @desc    Get list of available place types for filtering
  * @access  Public

@@ -61,7 +61,7 @@ Load: `references/output-standards.md`
 **Plan Directory Structure**
 ```
 plans/
-└── YYYYMMDD-HHmm-plan-name/
+└── {date}-plan-name/
     ├── research/
     │   ├── researcher-XX-report.md
     │   └── ...
@@ -75,6 +75,44 @@ plans/
     ├── phase-XX-phase-name-here.md
     └── ...
 ```
+
+## Active Plan State
+
+Prevents version proliferation by tracking current working plan via session state.
+
+### Active vs Suggested Plans
+
+| Type | Env Var | Meaning |
+|------|---------|---------|
+| **Active** | `$CK_ACTIVE_PLAN` | Explicitly set via `set-active-plan.cjs` - use for reports |
+| **Suggested** | `$CK_SUGGESTED_PLAN` | Branch-matched, hint only - do NOT auto-use |
+
+### How It Works
+
+Plan context is managed through:
+1. **`$CK_ACTIVE_PLAN` env var**: Only set for explicitly activated plans (via session state)
+2. **`$CK_SUGGESTED_PLAN` env var**: Branch-matched plans shown as hints, not directives
+3. **Session temp file**: `/tmp/ck-session-{id}.json` stores explicit activations only
+4. **SubagentStart hook**: Injects differentiated context (Active vs Suggested)
+
+### Rules
+
+1. **Check `$CK_ACTIVE_PLAN` first**: If set and valid directory, ask "Continue with existing plan? [Y/n]"
+2. **Check `$CK_SUGGESTED_PLAN` second**: If set, inform user "Found suggested plan from branch: {path}"
+   - This is a hint only - do NOT auto-use it
+   - Ask user if they want to activate it or create new
+3. **If neither set**: Proceed to create new plan
+4. **Update on create**: Run `node .claude/scripts/set-active-plan.cjs plans/...`
+
+### Report Output Location
+
+All agents writing reports MUST:
+1. Check `Plan Context` section injected by hooks for `Reports Path`
+2. Only `$CK_ACTIVE_PLAN` plans use plan-specific reports path
+3. `$CK_SUGGESTED_PLAN` plans use default `plans/reports/` (not plan folder)
+4. Use naming: `{agent}-{date}-{slug}.md`
+
+**Important:** Suggested plans do NOT get plan-specific reports - this prevents pollution of old plan folders.
 
 ## Quality Standards
 

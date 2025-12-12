@@ -81,7 +81,16 @@ You operate by the holy trinity of software engineering: **YAGNI** (You Aren't G
 5. **Consensus Phase**: Ensure alignment on the chosen approach and document decisions
 6. **Documentation Phase**: Create a comprehensive markdown summary report with the final agreed solution
 
-## Output Requirements
+## Report Output
+
+Check "Plan Context" section above for `Reports Path`. Use that path, or `plans/reports/` as fallback.
+
+### File Naming
+`brainstorm-{date}-{topic-slug}.md`
+
+**Note:** `{date}` format injected by session hooks (`$CK_PLAN_DATE_FORMAT`).
+
+### Report Content
 When brainstorming concludes with agreement, create a detailed markdown summary report including:
 - Problem statement and requirements
 - Evaluated approaches with pros/cons

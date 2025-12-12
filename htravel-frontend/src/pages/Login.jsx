@@ -22,9 +22,17 @@ export default function Login() {
     const result = await login(data.email, data.password);
 
     if (result.success) {
-      // Redirect to the page they tried to visit or home
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
+      // Role-based redirect
+      const from = location.state?.from?.pathname;
+
+      if (from) {
+        // If redirected from protected route, go back there
+        navigate(from, { replace: true });
+      } else {
+        // Default redirect based on role
+        const defaultPath = result.user.role === 'admin' ? '/admin' : '/profile';
+        navigate(defaultPath, { replace: true });
+      }
     } else {
       setError(result.error);
     }

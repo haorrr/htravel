@@ -25,15 +25,24 @@ export default function Blog() {
         params.category = selectedCategory;
       }
 
-      const response = await api.get('/api/articles', { params });
-      setArticles(response.data.data || []);
+      const response = await api.get('/articles', { params });
+      
+      // --- SỬA ĐOẠN NÀY ---
+      // Dữ liệu thực sự nằm trong .articles
+      const articlesData = response.data.data?.articles || []; 
+      setArticles(Array.isArray(articlesData) ? articlesData : []);
 
-      // Extract unique categories
-      const uniqueCategories = [...new Set(response.data.data.map(a => a.category))];
+      // Lấy danh sách category từ bài viết để làm bộ lọc
+      const uniqueCategories = Array.isArray(articlesData)
+        ? [...new Set(articlesData.map(a => a.category?.slug || a.category).filter(Boolean))]
+        : [];
       setCategories(uniqueCategories);
+      // ---------------------
+
     } catch (err) {
       console.error('Error fetching articles:', err);
       setError('Không thể tải bài viết');
+      setArticles([]);
     } finally {
       setIsLoading(false);
     }
@@ -45,6 +54,9 @@ export default function Blog() {
   );
 
   const getCategoryColor = (category) => {
+    // Nếu category là object thì lấy .slug, nếu là chuỗi thì giữ nguyên, không có thì rỗng
+    const slug = category?.slug || category || '';
+    
     const colors = {
       'du-lich': 'bg-blue-500/20 text-blue-300 border-blue-500/50',
       'am-thuc': 'bg-orange-500/20 text-orange-300 border-orange-500/50',
@@ -52,10 +64,17 @@ export default function Blog() {
       'kinh-nghiem': 'bg-green-500/20 text-green-300 border-green-500/50',
       'dia-danh': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50'
     };
-    return colors[category] || 'bg-luxury-gold/20 text-luxury-gold border-luxury-gold/50';
+    // Tìm theo slug, nếu không thấy thì trả về màu mặc định (Vàng)
+    return colors[slug] || 'bg-luxury-gold/20 text-luxury-gold border-luxury-gold/50';
   };
 
+  // Sửa lại hàm lấy tên: Lấy thuộc tính .name
   const getCategoryName = (category) => {
+    // Nếu là object {id, name, slug} thì trả về name
+    if (category && typeof category === 'object') {
+      return category.name;
+    }
+    // Nếu là chuỗi thì map tay (cho dữ liệu cũ), hoặc trả về chính nó
     const names = {
       'du-lich': 'Du lịch',
       'am-thuc': 'Ẩm thực',
@@ -63,7 +82,7 @@ export default function Blog() {
       'kinh-nghiem': 'Kinh nghiệm',
       'dia-danh': 'Địa danh'
     };
-    return names[category] || category;
+    return names[category] || category || 'Chưa phân loại';
   };
 
   if (isLoading) {
@@ -133,7 +152,7 @@ export default function Blog() {
                 className="bg-luxury-darker border border-luxury-gray-400 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-luxury-gold transition-colors font-philosopher min-w-[200px]"
               >
                 <option value="all">Tất cả chủ đề</option>
-                {categories.map((category) => (
+                {Array.isArray(categories) && categories.map((category) => (
                   <option key={category} value={category}>
                     {getCategoryName(category)}
                   </option>

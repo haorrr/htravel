@@ -61,40 +61,27 @@ const upload = multer({
  */
 const processAvatar = async (req, res, next) => {
   try {
-    if (!req.file) {
-      return next();
-    }
+    if (!req.file) return next();
 
     const inputPath = req.file.path;
-    const outputPath = inputPath.replace(path.extname(inputPath), '.jpg');
+    // THÊM: Thêm hậu tố '-processed' để đảm bảo tên file khác file gốc
+    const outputPath = inputPath.replace(path.extname(inputPath), '-processed.jpg');
 
-    // Process image with Sharp
     await sharp(inputPath)
-      .resize(512, 512, {
-        fit: 'cover',
-        position: 'center',
-      })
-      .jpeg({
-        quality: 80,
-        progressive: true,
-      })
+      .resize(512, 512, { fit: 'cover', position: 'center' })
+      .jpeg({ quality: 80, progressive: true })
       .toFile(outputPath);
 
-    // Delete original file if different from output
-    if (inputPath !== outputPath) {
-      await fs.unlink(inputPath);
-    }
+    // Xóa file gốc
+    await fs.unlink(inputPath);
 
-    // Update req.file with processed image info
+    // Cập nhật thông tin file để controller dùng
     req.file.path = outputPath;
     req.file.filename = path.basename(outputPath);
 
     next();
   } catch (error) {
-    // Clean up file on error
-    if (req.file?.path) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
+    if (req.file?.path) await fs.unlink(req.file.path).catch(() => {});
     next(error);
   }
 };
@@ -138,41 +125,26 @@ const thumbnailUpload = multer({
  */
 const processThumbnail = async (req, res, next) => {
   try {
-    if (!req.file) {
-      return next();
-    }
+    if (!req.file) return next();
 
     const inputPath = req.file.path;
-    const outputPath = inputPath.replace(path.extname(inputPath), '.jpg');
+    // THÊM: '-processed'
+    const outputPath = inputPath.replace(path.extname(inputPath), '-processed.jpg');
 
-    // Process image with Sharp
     await sharp(inputPath)
-      .resize(1200, 630, {
-        fit: 'cover',
-        position: 'center',
-      })
-      .jpeg({
-        quality: 80,
-        progressive: true,
-      })
+      .resize(1200, 630, { fit: 'cover', position: 'center' })
+      .jpeg({ quality: 80, progressive: true })
       .toFile(outputPath);
 
-    // Delete original file if different from output
-    if (inputPath !== outputPath) {
-      await fs.unlink(inputPath);
-    }
+    await fs.unlink(inputPath);
 
-    // Update req.file with processed image info
     req.file.path = outputPath;
     req.file.filename = path.basename(outputPath);
     req.file.url = `/uploads/thumbnails/${req.file.filename}`;
 
     next();
   } catch (error) {
-    // Clean up file on error
-    if (req.file?.path) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
+    if (req.file?.path) await fs.unlink(req.file.path).catch(() => {});
     next(error);
   }
 };

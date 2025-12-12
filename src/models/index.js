@@ -9,6 +9,10 @@ const CheckIn = require('./CheckIn');
 const Category = require('./Category');
 const Article = require('./Article');
 const VirtualTrip = require('./VirtualTrip');
+const Itinerary = require('./Itinerary');
+const Tag = require('./Tag');
+const ArticleCategory = require('./ArticleCategory');
+const ArticleTag = require('./ArticleTag');
 
 // ===================
 // Model Associations
@@ -33,10 +37,58 @@ User.hasMany(VirtualTrip, {
   as: 'virtualTrips',
 });
 
-// Category has many Articles
+User.hasMany(Itinerary, {
+  foreignKey: 'userId',
+  onDelete: 'CASCADE',
+  as: 'itineraries',
+});
+
+// Category self-referencing (parent-child)
+Category.hasMany(Category, {
+  foreignKey: 'parentId',
+  as: 'children',
+  onDelete: 'SET NULL',
+});
+
+Category.belongsTo(Category, {
+  foreignKey: 'parentId',
+  as: 'parent',
+});
+
+// Category has many Articles (legacy single category - keeping for backward compatibility)
 Category.hasMany(Article, {
   foreignKey: 'categoryId',
   onDelete: 'RESTRICT',
+  as: 'articles',
+});
+
+// Article-Category many-to-many (via ArticleCategory junction)
+Article.belongsToMany(Category, {
+  through: ArticleCategory,
+  foreignKey: 'articleId',
+  otherKey: 'categoryId',
+  as: 'categories',
+});
+
+Category.belongsToMany(Article, {
+  through: ArticleCategory,
+  foreignKey: 'categoryId',
+  otherKey: 'articleId',
+  as: 'categoryArticles',
+});
+
+// Article-Tag many-to-many (via ArticleTag junction)
+Article.belongsToMany(Tag, {
+  through: ArticleTag,
+  foreignKey: 'articleId',
+  otherKey: 'tagId',
+  as: 'tags',
+});
+
+Tag.belongsToMany(Article, {
+  through: ArticleTag,
+  foreignKey: 'tagId',
+  otherKey: 'articleId',
   as: 'articles',
 });
 
@@ -57,6 +109,11 @@ Article.belongsTo(Category, {
 });
 
 VirtualTrip.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+
+Itinerary.belongsTo(User, {
   foreignKey: 'userId',
   as: 'user',
 });
@@ -93,5 +150,9 @@ module.exports = {
   Category,
   Article,
   VirtualTrip,
+  Itinerary,
+  Tag,
+  ArticleCategory,
+  ArticleTag,
   syncModels,
 };

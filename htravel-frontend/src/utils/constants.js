@@ -35,7 +35,14 @@ export const API_ENDPOINTS = {
   PLACES_NEARBY: '/api/places/nearby',
   PLACES_DETAILS: (id) => `/api/places/details/${id}`,
   PLACES_TYPES: '/api/places/types',
-  PLACES_STATUS: '/api/places/status'
+  PLACES_STATUS: '/api/places/status',
+
+  // Trip Planner
+  PLANNER_GENERATE: '/api/planner/generate',
+  PLANNER_SAVE: '/api/planner/save',
+  PLANNER_MY_TRIPS: '/api/planner/my-trips',
+  PLANNER_TRIP_BY_ID: (id) => `/api/planner/trips/${id}`,
+  PLANNER_STATUS: '/api/planner/status'
 };
 
 // Route Paths
@@ -48,7 +55,10 @@ export const ROUTES = {
   MAP: '/map',
   BLOG: '/blog',
   BLOG_DETAIL: (id) => `/blog/${id}`,
-  PLACES: '/places'
+  PLACES: '/places',
+  TRIP_PLANNER: '/trip-planner',
+  MY_TRIPS: '/my-trips',
+  TRIP_DETAIL: (id) => `/trip-detail/${id}`
 };
 
 // File Upload Limits
@@ -138,5 +148,35 @@ export const MESSAGES = {
   CHECK_IN_SUCCESS: 'Check-in thành công!',
   CHECK_IN_FAILED: 'Check-in thất bại.',
   NETWORK_ERROR: 'Lỗi kết nối. Vui lòng kiểm tra mạng.',
-  GENERIC_ERROR: 'Đã xảy ra lỗi. Vui lòng thử lại.'
+  GENERIC_ERROR: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+  ITINERARY_GENERATE_SUCCESS: 'Đã tạo lịch trình thành công!',
+  ITINERARY_GENERATE_FAILED: 'Không thể tạo lịch trình. Vui lòng thử lại.',
+  ITINERARY_SAVE_SUCCESS: 'Đã lưu lịch trình thành công!',
+  ITINERARY_SAVE_FAILED: 'Không thể lưu lịch trình.',
+  ITINERARY_DELETE_SUCCESS: 'Đã xóa lịch trình thành công!',
+  ITINERARY_DELETE_FAILED: 'Không thể xóa lịch trình.'
 };
+
+// Trip Planner Budget Options
+export const BUDGET_OPTIONS = [
+  { value: 'budget', label: 'Tiết kiệm', description: '500.000-1.000.000 VNĐ/ngày' },
+  { value: 'moderate', label: 'Trung bình', description: '1.500.000-3.000.000 VNĐ/ngày' },
+  { value: 'luxury', label: 'Cao cấp', description: '5.000.000+ VNĐ/ngày' }
+];
+
+// Trip Planner Interest Options
+export const INTEREST_OPTIONS = [
+  { value: 'culture', label: 'Văn hóa', icon: '🏛️' },
+  { value: 'food', label: 'Ẩm thực', icon: '🍜' },
+  { value: 'nature', label: 'Thiên nhiên', icon: '🌿' },
+  { value: 'history', label: 'Lịch sử', icon: '📚' },
+  { value: 'adventure', label: 'Phiêu lưu', icon: '⛰️' },
+  { value: 'shopping', label: 'Mua sắm', icon: '🛍️' },
+  { value: 'beach', label: 'Biển', icon: '🏖️' },
+  { value: 'mountain', label: 'Núi', icon: '🏔️' },
+  { value: 'art', label: 'Nghệ thuật', icon: '🎨' },
+  { value: 'architecture', label: 'Kiến trúc', icon: '🏰' },
+  { value: 'nightlife', label: 'Cuộc sống đêm', icon: '🌙' },
+  { value: 'spiritual', label: 'Tâm linh', icon: '🙏' },
+  { value: 'photography', label: 'Nhiếp ảnh', icon: '📷' }
+];

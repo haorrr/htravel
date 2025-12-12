@@ -1,0 +1,71 @@
+name: htravel_mobile
+description: HTravel Mobile App - AI-powered travel companion
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Network
+  dio: ^5.7.0
+  retrofit: ^4.4.1
+  json_annotation: ^4.9.0
+  http_parser: ^4.1.1
+  connectivity_plus: ^6.1.2
+
+  # Local Storage
+  flutter_secure_storage: ^9.2.2
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.3.3
+
+  # UI Components
+  cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+
+  # Utils
+  freezed_annotation: ^2.4.4
+  logger: ^2.5.0
+  intl: ^0.20.2
+  equatable: ^2.0.7
+  dartz: ^0.10.1
+
+  # Cupertino Icons
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Code Generation
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  retrofit_generator: ^9.1.5
+  riverpod_generator: ^2.6.1
+
+  # Testing
+  mockito: ^5.4.4
+
+  # Linting
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/

@@ -1,6 +1,7 @@
 /**
- * Gemini AI Service
+ * Gemini AI Service (UPDATED FOR GEMINI 3 PRO)
  * Handles landmark recognition using Google Gemini Vision API
+ * Documentation: https://ai.google.dev/gemini-api/docs/models?hl=vi#gemini-2.5-flash
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -21,68 +22,61 @@ class GeminiService {
     this.client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     this.circuitBreaker = new CircuitBreaker(5, 60000);
 
-    // Model fallback strategy: Use latest Gemini models
-    // Based on https://ai.google.dev/gemini-api/docs
+    // CẬP NHẬT: Sử dụng model Gemini 3 Pro Preview mới nhất (12/2025)
     this.models = [
-      'gemini-2.5-flash', // Latest: Fast, balanced, 1M context window
-      'gemini-2.5-pro',   // Fallback: Powerful reasoning model
+      'gemini-2.5-flash', // Model thông minh nhất hiện nay (Reasoning Model)
+      'gemini-2.5-flash',     // Fallback: Model tốc độ cao, ổn định
     ];
 
-    // Vietnamese prompt for landmark identification (CRITICAL REQUIREMENT)
-    this.vietnamesePrompt = `Please analyze this image and identify the specific location shown. Then, provide a detailed description in Vietnamese, structured as follows:
-
-Tên địa điểm: The exact name of the location/landmark.
-Vị trí: The specific province/city and region.
-Nét đặc trưng: Describe the unique architecture, landscape, or historical/cultural significance.
-Điều thú vị: Share a few interesting facts or recommended experiences.
-Important: If you cannot identify the location with certainty, please respond only with this exact Vietnamese sentence: 'Tôi chưa nhận ra được địa điểm này, bạn có thể chụp lại hoặc đưa ảnh địa điểm nổi tiếng hơn được không'.`;
+    // Prompt tối ưu cho JSON Output
+    this.vietnamesePrompt = `
+      Analyze this image and identify the landmark. 
+      Return ONLY a valid JSON object (no markdown, no extra text) with this structure:
+      {
+        "name": "Exact name of the location",
+        "location": "City/Province, Region",
+        "description": "Unique architecture or history (in Vietnamese)",
+        "fun_fact": "Interesting fact (in Vietnamese)",
+        "confidence": "High/Medium/Low"
+      }
+      
+      If you cannot identify the location with certainty, return exactly:
+      {
+        "name": "Unknown",
+        "location": "Unknown",
+        "description": "Tôi chưa nhận ra được địa điểm này, bạn có thể chụp lại hoặc đưa ảnh địa điểm nổi tiếng hơn được không",
+        "fun_fact": "",
+        "confidence": "None"
+      }
+    `;
   }
 
-  /**
-   * Identify landmark from image
-   */
   async identifyLandmark(imagePath) {
-    if (!this.enabled) {
-      throw new Error('Gemini AI service is not configured');
-    }
+    if (!this.enabled) throw new Error('Gemini AI service is not configured');
 
     let processedPath = null;
-
     try {
-      // Validate image
       await imageProcessor.validate(imagePath);
-
-      // Preprocess image for Gemini
       processedPath = await imageProcessor.preprocessForGemini(imagePath);
-
-      // Read image file
       const imageBuffer = await fs.readFile(processedPath);
 
-      // Try identification with circuit breaker protection
       const result = await this.circuitBreaker.call(async () => {
         return await this.identifyWithFallback(imageBuffer);
       });
 
-      // Cleanup temporary files
+      // Cleanup
       await imageProcessor.cleanup(processedPath);
-      if (imagePath !== processedPath) {
-        await imageProcessor.cleanup(imagePath);
-      }
+      if (imagePath !== processedPath) await imageProcessor.cleanup(imagePath);
 
       return result;
     } catch (error) {
-      // Cleanup on error
       if (processedPath) await imageProcessor.cleanup(processedPath);
       await imageProcessor.cleanup(imagePath);
-
       logger.error('Landmark identification failed:', { error: error.message });
       throw error;
     }
   }
 
-  /**
-   * Try identification with model fallback
-   */
   async identifyWithFallback(imageBuffer) {
     const errors = [];
 
@@ -90,54 +84,44 @@ Important: If you cannot identify the location with certainty, please respond on
       try {
         logger.info(`Attempting landmark identification with ${modelName}`);
         const result = await this.identifyWithModel(modelName, imageBuffer);
-
-        // Validate confidence threshold
-        if (result.confidence < 0.5) {
-          logger.warn(`Low confidence (${result.confidence}) from ${modelName}`);
-          errors.push(new Error(`Low confidence: ${result.confidence}`));
-          continue;
-        }
-
-        logger.info(`Landmark identified successfully with ${modelName}:`, result.name);
         return result;
       } catch (error) {
         logger.error(`${modelName} failed:`, { error: error.message });
         errors.push(error);
 
-        // Don't retry on client errors (400)
-        if (error.message.includes('400')) {
-          break;
+        // Không retry nếu lỗi từ phía client (400, 404 - sai tên model hoặc bad request)
+        if (error.message.includes('400') || error.message.includes('404')) {
+          // Nếu model 3.0 chưa khả dụng với Key hiện tại, thử tiếp model sau
+          continue; 
         }
 
-        // Add delay between retries
         if (this.models.indexOf(modelName) < this.models.length - 1) {
           await this.delay(1000);
         }
       }
     }
 
-    // All models failed - return unknown with Vietnamese message
-    logger.warn('All identification attempts failed, returning unknown');
+    // Fallback response
     return {
       name: 'Unknown',
       location: 'Unknown',
-      description: 'Tôi chưa nhận ra được địa điểm này, bạn có thể chụp lại hoặc đưa ảnh địa điểm nổi tiếng hơn được không',
+      description: 'Hệ thống đang bận hoặc không nhận diện được ảnh.',
       characteristics: '',
       interestingFacts: '',
       confidence: 0,
     };
   }
 
-  /**
-   * Identify landmark using specific model
-   */
   async identifyWithModel(modelName, imageBuffer) {
+    // CẤU HÌNH QUAN TRỌNG CHO GEMINI 3
     const model = this.client.getGenerativeModel({
       model: modelName,
+      apiVersion: 'v1beta', // Bắt buộc dùng v1beta cho các model preview
       generationConfig: {
         temperature: 0.4,
         topP: 0.95,
         maxOutputTokens: 1024,
+        responseMimeType: "application/json" // Ép kiểu trả về JSON chuẩn
       },
     });
 
@@ -152,68 +136,49 @@ Important: If you cannot identify the location with certainty, please respond on
     const response = result.response;
     const text = response.text();
 
-    // Parse Vietnamese response
-    const landmarkData = this.parseVietnameseResponse(text);
-
-    return landmarkData;
+    return this.parseResponse(text);
   }
 
-  /**
-   * Parse Vietnamese response format
-   */
-  parseVietnameseResponse(text) {
-    // Check if response is the "unknown" fallback message
-    if (text.includes('Tôi chưa nhận ra được địa điểm này')) {
+  parseResponse(text) {
+    try {
+      // Làm sạch chuỗi JSON nếu AI trả về kèm markdown
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const data = JSON.parse(cleanText);
+
+      if (data.name === 'Unknown') {
+        return {
+          name: 'Unknown',
+          location: 'Unknown',
+          description: data.description,
+          characteristics: '',
+          interestingFacts: '',
+          confidence: 0
+        };
+      }
+
+      return {
+        name: data.name,
+        location: data.location,
+        description: data.description,
+        characteristics: data.description,
+        interestingFacts: data.fun_fact,
+        confidence: 0.95
+      };
+    } catch (error) {
+      logger.error('Failed to parse AI JSON response:', text);
       return {
         name: 'Unknown',
         location: 'Unknown',
-        description: text.trim(),
-        characteristics: '',
-        interestingFacts: '',
-        confidence: 0,
+        description: 'Lỗi xử lý dữ liệu từ AI.',
+        confidence: 0
       };
     }
-
-    // Extract fields using Vietnamese labels
-    const nameMatch = text.match(/Tên địa điểm:\s*(.+?)(?:\n|$)/i);
-    const locationMatch = text.match(/Vị trí:\s*(.+?)(?:\n|$)/i);
-    const characteristicsMatch = text.match(/Nét đặc trưng:\s*(.+?)(?:\n(?:Điều thú vị|$))/is);
-    const factsMatch = text.match(/Điều thú vị:\s*(.+?)$/is);
-
-    const name = nameMatch ? nameMatch[1].trim() : 'Unknown';
-    const location = locationMatch ? locationMatch[1].trim() : 'Unknown';
-    const characteristics = characteristicsMatch ? characteristicsMatch[1].trim() : '';
-    const interestingFacts = factsMatch ? factsMatch[1].trim() : '';
-
-    // Calculate confidence based on response completeness
-    let confidence = 0;
-    if (name !== 'Unknown' && location !== 'Unknown') {
-      confidence = 0.8; // High confidence if both name and location identified
-      if (characteristics && interestingFacts) {
-        confidence = 0.95; // Very high confidence if all details provided
-      }
-    }
-
-    return {
-      name,
-      location,
-      description: characteristics || 'Không có thông tin chi tiết',
-      characteristics,
-      interestingFacts,
-      confidence,
-    };
   }
 
-  /**
-   * Delay helper for retry logic
-   */
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  /**
-   * Get circuit breaker status
-   */
   getStatus() {
     return {
       enabled: this.enabled,

@@ -16,7 +16,9 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 
 // 1. Security middleware - Helmet sets various HTTP headers
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" } 
+}));
 
 // 2. CORS configuration - Allow frontend to access API
 app.use(cors({
@@ -70,9 +72,13 @@ app.use('/api/user', require('./routes/checkInRoutes'));
 // Phase 06: Blog/Article routes
 app.use('/api/articles', require('./routes/articleRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/tags', require('./routes/tagRoutes'));
 
 // Phase 08: Google Maps Places routes
 app.use('/api/places', require('./routes/placesRoutes'));
+
+// Phase 09: AI Trip Planner routes
+app.use('/api/planner', require('./routes/plannerRoutes'));
 
 // Admin routes (user management)
 app.use('/api/admin', require('./routes/adminRoutes'));

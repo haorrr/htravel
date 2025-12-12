@@ -155,6 +155,34 @@ const getPlaceDetails = async (req, res, next) => {
 };
 
 /**
+ * GET /api/places/photos/:photoReference
+ * Proxy method to serve images
+ */
+const getPlacePhoto = async (req, res, next) => {
+  try {
+    const { photoReference } = req.params;
+    
+    if (!photoReference) {
+      return res.status(404).send('Photo reference required');
+    }
+
+    // Lấy stream ảnh từ service
+    const imageStream = await placesService.getPlacePhoto(photoReference);
+
+    // Set header content type (Google thường trả về image/jpeg)
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 1 ngày
+
+    // Pipe stream về client
+    imageStream.pipe(res);
+  } catch (error) {
+    logger.error('Get place photo failed:', { error: error.message });
+    // Nếu lỗi, trả về 404 hoặc ảnh placeholder
+    res.status(404).send('Photo not found');
+  }
+};
+
+/**
  * GET /api/places/types
  * Get list of available place types
  */
@@ -200,4 +228,5 @@ module.exports = {
   getPlaceDetails,
   getPlaceTypes,
   getStatus,
+  getPlacePhoto,
 };

@@ -20,28 +20,20 @@ class PlacesService {
     this.apiKey = process.env.GOOGLE_MAPS_API_KEY;
     this.baseUrl = 'https://maps.googleapis.com/maps/api';
     this.cacheTtl = 24 * 60 * 60; // 24 hours in seconds
+    
+    // URL của Backend Server để phục vụ ảnh proxy
+    // Hãy đảm bảo process.env.API_BASE_URL khớp với domain/port server của bạn (VD: http://localhost:5000)
+    this.appBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000'; 
   }
 
   /**
    * Text search for places
-   * @param {string} query - Search query (e.g., "restaurants in Hanoi")
-   * @param {number} latitude - Optional: user's latitude for location bias
-   * @param {number} longitude - Optional: user's longitude for location bias
-   * @param {number} radius - Optional: search radius in meters (max 50000)
-   * @param {string} type - Optional: place type filter (restaurant, cafe, etc.)
    */
   async textSearch(query, { latitude, longitude, radius, type } = {}) {
-    if (!this.enabled) {
-      throw new Error('Places service is not configured');
-    }
-
-    if (!query || query.trim().length === 0) {
-      throw new Error('Search query is required');
-    }
+    if (!this.enabled) throw new Error('Places service is not configured');
+    if (!query || query.trim().length === 0) throw new Error('Search query is required');
 
     const cacheKey = `places:text:${query}:${latitude}:${longitude}:${radius}:${type}`;
-
-    // Check cache
     const cached = cacheManager.get(cacheKey);
     if (cached) {
       logger.info(`Places cache hit: ${cacheKey}`);
@@ -50,148 +42,72 @@ class PlacesService {
 
     logger.info('Places API text search:', { query, latitude, longitude });
 
-    const params = {
-      query,
-      key: this.apiKey,
-      language: 'vi', // Vietnamese results
-    };
-
-    // Add location bias if provided
+    const params = { query, key: this.apiKey, language: 'vi' };
     if (latitude && longitude) {
       params.location = `${latitude},${longitude}`;
-      if (radius) {
-        params.radius = Math.min(radius, 50000); // Max 50km
-      }
+      if (radius) params.radius = Math.min(radius, 50000);
     }
-
-    // Add type filter if provided
-    if (type) {
-      params.type = type;
-    }
+    if (type) params.type = type;
 
     try {
-      const response = await axios.get(`${this.baseUrl}/place/textsearch/json`, {
-        params,
-        timeout: 10000,
-      });
-
+      const response = await axios.get(`${this.baseUrl}/place/textsearch/json`, { params, timeout: 10000 });
       if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
         throw new Error(`Places API error: ${response.data.status}`);
       }
-
       const results = this.formatPlacesResults(response.data.results || []);
-
-      // Cache results
       cacheManager.set(cacheKey, results, this.cacheTtl);
-
       return results;
     } catch (error) {
-      logger.error('Places text search failed:', {
-        error: error.message,
-        query,
-      });
+      logger.error('Places text search failed:', { error: error.message, query });
       throw error;
     }
   }
 
   /**
    * Nearby search for places
-   * @param {number} latitude - Center latitude
-   * @param {number} longitude - Center longitude
-   * @param {number} radius - Search radius in meters (max 50000)
-   * @param {string} type - Optional: place type (restaurant, tourist_attraction, etc.)
-   * @param {string} keyword - Optional: keyword to search
    */
   async nearbySearch(latitude, longitude, radius, { type, keyword } = {}) {
-    if (!this.enabled) {
-      throw new Error('Places service is not configured');
-    }
+    if (!this.enabled) throw new Error('Places service is not configured');
+    if (!latitude || !longitude) throw new Error('Latitude and longitude are required');
+    if (!radius || radius <= 0) throw new Error('Valid radius is required');
 
-    if (!latitude || !longitude) {
-      throw new Error('Latitude and longitude are required');
-    }
-
-    if (!radius || radius <= 0) {
-      throw new Error('Valid radius is required');
-    }
-
-    // Limit radius to 50km (Google Maps API limit)
     radius = Math.min(radius, 50000);
-
     const cacheKey = `places:nearby:${latitude}:${longitude}:${radius}:${type}:${keyword}`;
-
-    // Check cache
+    
     const cached = cacheManager.get(cacheKey);
     if (cached) {
       logger.info(`Places cache hit: ${cacheKey}`);
       return cached;
     }
 
-    logger.info('Places API nearby search:', {
-      location: `${latitude},${longitude}`,
-      radius,
-      type,
-      keyword,
-    });
+    logger.info('Places API nearby search:', { location: `${latitude},${longitude}`, radius });
 
-    const params = {
-      location: `${latitude},${longitude}`,
-      radius,
-      key: this.apiKey,
-      language: 'vi',
-    };
-
-    if (type) {
-      params.type = type;
-    }
-
-    if (keyword) {
-      params.keyword = keyword;
-    }
+    const params = { location: `${latitude},${longitude}`, radius, key: this.apiKey, language: 'vi' };
+    if (type) params.type = type;
+    if (keyword) params.keyword = keyword;
 
     try {
-      const response = await axios.get(`${this.baseUrl}/place/nearbysearch/json`, {
-        params,
-        timeout: 10000,
-      });
-
+      const response = await axios.get(`${this.baseUrl}/place/nearbysearch/json`, { params, timeout: 10000 });
       if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
         throw new Error(`Places API error: ${response.data.status}`);
       }
-
       const results = this.formatPlacesResults(response.data.results || []);
-
-      // Cache results
       cacheManager.set(cacheKey, results, this.cacheTtl);
-
       return results;
     } catch (error) {
-      logger.error('Places nearby search failed:', {
-        error: error.message,
-        location: `${latitude},${longitude}`,
-        radius,
-      });
+      logger.error('Places nearby search failed:', { error: error.message });
       throw error;
     }
   }
 
   /**
    * Get place details by place ID
-   * @param {string} placeId - Google Place ID
-   * @param {Array<string>} fields - Optional: specific fields to retrieve
    */
   async getPlaceDetails(placeId, fields = null) {
-    if (!this.enabled) {
-      throw new Error('Places service is not configured');
-    }
-
-    if (!placeId) {
-      throw new Error('Place ID is required');
-    }
+    if (!this.enabled) throw new Error('Places service is not configured');
+    if (!placeId) throw new Error('Place ID is required');
 
     const cacheKey = `places:details:${placeId}`;
-
-    // Check cache
     const cached = cacheManager.get(cacheKey);
     if (cached) {
       logger.info(`Places cache hit: ${cacheKey}`);
@@ -200,61 +116,58 @@ class PlacesService {
 
     logger.info('Places API details:', { placeId });
 
-    const params = {
-      place_id: placeId,
-      key: this.apiKey,
-      language: 'vi',
-    };
-
-    // If specific fields requested, use them (reduces API costs)
+    const params = { place_id: placeId, key: this.apiKey, language: 'vi' };
+    
     if (fields && fields.length > 0) {
       params.fields = fields.join(',');
     } else {
-      // Default fields for comprehensive details
       params.fields = [
-        'place_id',
-        'name',
-        'formatted_address',
-        'geometry',
-        'rating',
-        'user_ratings_total',
-        'reviews',
-        'opening_hours',
-        'formatted_phone_number',
-        'website',
-        'photos',
-        'types',
-        'price_level',
+        'place_id', 'name', 'formatted_address', 'geometry', 'rating', 
+        'user_ratings_total', 'reviews', 'opening_hours', 
+        'formatted_phone_number', 'website', 'photos', 'types', 'price_level'
       ].join(',');
     }
 
     try {
-      const response = await axios.get(`${this.baseUrl}/place/details/json`, {
-        params,
-        timeout: 10000,
-      });
-
+      const response = await axios.get(`${this.baseUrl}/place/details/json`, { params, timeout: 10000 });
       if (response.data.status !== 'OK') {
         throw new Error(`Places API error: ${response.data.status}`);
       }
-
       const details = this.formatPlaceDetails(response.data.result);
-
-      // Cache for longer (place details don't change often)
-      cacheManager.set(cacheKey, details, this.cacheTtl * 7); // 7 days
-
+      cacheManager.set(cacheKey, details, this.cacheTtl * 7);
       return details;
     } catch (error) {
-      logger.error('Places details failed:', {
-        error: error.message,
-        placeId,
-      });
+      logger.error('Places details failed:', { error: error.message, placeId });
       throw error;
     }
   }
 
   /**
-   * Format places results for consistent API response
+   * New Method: Get Photo Stream Proxy
+   */
+  async getPlacePhoto(photoReference) {
+    if (!this.enabled) throw new Error('Places service is not configured');
+
+    try {
+      const response = await axios.get(`${this.baseUrl}/place/photo`, {
+        params: {
+          maxwidth: 800,
+          photoreference: photoReference,
+          key: this.apiKey,
+        },
+        responseType: 'stream', // Quan trọng: lấy stream để pipe về FE
+        timeout: 10000,
+      });
+
+      return response.data;
+    } catch (error) {
+      logger.error('Get place photo proxy failed:', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Format places results
    */
   formatPlacesResults(places) {
     return places.map(place => ({
@@ -267,21 +180,21 @@ class PlacesService {
       },
       rating: place.rating || null,
       ratingsCount: place.user_ratings_total || 0,
-      priceLevel: place.price_level || null, // 0-4 scale
+      priceLevel: place.price_level || null,
       types: place.types || [],
       openNow: place.opening_hours?.open_now || null,
       photos: place.photos?.slice(0, 3).map(photo => ({
         reference: photo.photo_reference,
         width: photo.width,
         height: photo.height,
-        // URL to get photo (requires another API call)
-        url: `${this.baseUrl}/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${this.apiKey}`,
+        // SỬA: URL trỏ về Server của mình
+        url: `${this.appBaseUrl}/api/places/photos/${photo.photo_reference}`,
       })) || [],
     }));
   }
 
   /**
-   * Format place details for comprehensive information
+   * Format place details
    */
   formatPlaceDetails(place) {
     return {
@@ -313,45 +226,18 @@ class PlacesService {
         reference: photo.photo_reference,
         width: photo.width,
         height: photo.height,
-        url: `${this.baseUrl}/place/photo?maxwidth=800&photoreference=${photo.photo_reference}&key=${this.apiKey}`,
+        // SỬA: URL trỏ về Server của mình
+        url: `${this.appBaseUrl}/api/places/photos/${photo.photo_reference}`,
       })),
     };
   }
 
-  /**
-   * Get popular place types
-   */
   getPlaceTypes() {
-    return [
-      'restaurant',
-      'cafe',
-      'bar',
-      'tourist_attraction',
-      'museum',
-      'park',
-      'shopping_mall',
-      'hotel',
-      'spa',
-      'night_club',
-      'movie_theater',
-      'gym',
-      'library',
-      'church',
-      'temple',
-      'mosque',
-      'beach',
-    ];
+    return [ 'restaurant', 'cafe', 'bar', 'tourist_attraction', 'museum', 'park', 'shopping_mall', 'hotel', 'spa', 'night_club', 'movie_theater', 'gym', 'library', 'church', 'temple', 'mosque', 'beach' ];
   }
 
-  /**
-   * Get service status
-   */
   getStatus() {
-    return {
-      enabled: this.enabled,
-      cacheSize: cacheManager.size(),
-      availableTypes: this.getPlaceTypes().length,
-    };
+    return { enabled: this.enabled, cacheSize: cacheManager.size(), availableTypes: this.getPlaceTypes().length };
   }
 }
 

@@ -73,6 +73,10 @@ prompt.md
 uploads/
 logs/
 
+# GCP credentials (NEVER commit)
+gcp-service-account-key.json
+*-service-account-key.json
+
 # Test images (keep README, ignore actual images)
 test-images/*
 !test-images/README.md

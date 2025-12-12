@@ -36,6 +36,11 @@ const VirtualTrip = sequelize.define('VirtualTrip', {
       notEmpty: { msg: 'Destination name cannot be empty' },
     },
   },
+  metadata: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Generation metadata (model, prompt, timestamp, cost, etc.)',
+  },
 }, {
   tableName: 'virtual_trips',
   timestamps: true,

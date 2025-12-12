@@ -55,6 +55,11 @@ const User = sequelize.define('User', {
   tableName: 'users',
   timestamps: true,
   underscored: true,
+  indexes: [
+    { fields: ['email'] }, // Already unique, but explicit index for lookups
+    { fields: ['role'] }, // For admin queries
+    { fields: ['created_at'] }, // For dashboard stats queries
+  ],
 });
 
 // Hash password before create/update

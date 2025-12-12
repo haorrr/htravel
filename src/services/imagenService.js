@@ -19,7 +19,7 @@ class ImagenService {
     this.enabled = true;
     this.apiKey = process.env.GEMINI_API_KEY;
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
-    this.model = 'imagen-4.0-generate-001';
+    this.model = 'gemini-2.5-flash-image-preview';
     this.circuitBreaker = new CircuitBreaker(5, 60000);
   }
 
@@ -82,7 +82,7 @@ sự pha trộn hài hòa giữa người và bối cảnh, chân thực, chất
    * Call Imagen 4.0 API
    */
   async callImagenAPI(base64Image, prompt) {
-    const url = `${this.baseUrl}/models/${this.model}:predict`;
+    const url = `${this.baseUrl}/models/${this.model}:generateContent`;
 
     const requestBody = {
       instances: [

@@ -62,6 +62,7 @@ const CheckIn = sequelize.define('CheckIn', {
   indexes: [
     { fields: ['user_id'] },
     { fields: ['visit_date'] },
+    { fields: ['created_at'] }, // For dashboard activity queries
   ],
 });
 

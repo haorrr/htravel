@@ -1,8 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import AdminRoute from './components/common/AdminRoute';
 import Navbar from './components/layout/Navbar';
 import Homepage from './pages/Homepage';
 import Login from './pages/Login';
@@ -13,6 +14,13 @@ import Map from './pages/Map';
 import Blog from './pages/Blog';
 import BlogDetail from './pages/BlogDetail';
 import Places from './pages/Places';
+import TripPlanner from './pages/TripPlanner';
+import MyTrips from './pages/MyTrips';
+import TripDetail from './pages/TripDetail';
+import AdminDashboard from './pages/admin/Dashboard';
+import UserManagement from './pages/admin/Users';
+import ArticleManagement from './pages/admin/Articles';
+import CategoryManagement from './pages/admin/Categories';
 import NotFound from './pages/NotFound';
 import './index.css';
 
@@ -93,6 +101,39 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/trip-planner"
+                element={
+                  <ProtectedRoute>
+                    <TripPlanner />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/my-trips"
+                element={
+                  <ProtectedRoute>
+                    <MyTrips />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/trip-detail/:id"
+                element={
+                  <ProtectedRoute>
+                    <TripDetail />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Admin Routes - Protected by AdminRoute (requires admin role) */}
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<UserManagement />} />
+                <Route path="/admin/articles" element={<ArticleManagement />} />
+                <Route path="/admin/categories" element={<CategoryManagement />} />
+              </Route>
 
               {/* 404 Not Found */}
               <Route path="*" element={<NotFound />} />

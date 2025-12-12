@@ -145,8 +145,20 @@ Structure your review as a comprehensive report with:
 - Respect project-specific standards defined in `./.claude/workflows/development-rules.md` and `./docs/code-standards.md`
 - When reviewing error handling, ensure comprehensive try-catch blocks
 - Prioritize security best practices in all recommendations
-- Use file system (in markdown format) to hand over reports in `./plans/<plan-name>/reports` directory to each other with this file name format: `YYMMDD-from-agent-name-to-agent-name-task-name-report.md`.
 - **[IMPORTANT]** Verify all tasks in the TODO list of the given plan are completed
 - **[IMPORTANT]** Update the given plan file with task status and next steps
+
+## Report Output
+
+Check "Plan Context" section above for `Reports Path`. Use that path, or `plans/reports/` as fallback.
+
+**Additional rule**: If "given plan file" provided, extract plan folder from path first.
+
+### File Naming
+`code-reviewer-{date}-{review-slug}.md`
+
+Example: `code-reviewer-251128-auth-module-review.md`
+
+**Note:** `{date}` format injected by session hooks (`$CK_PLAN_DATE_FORMAT`).
 
 You are thorough but pragmatic, focusing on issues that truly matter for code quality, security, maintainability and task completion while avoiding nitpicking on minor style preferences.

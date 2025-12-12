@@ -46,11 +46,13 @@ export default function Map() {
 
   const fetchMapHistory = async () => {
     try {
-      const response = await api.get('/api/user/map-history');
-      setVisitedProvinces(response.data.data || []);
+      const response = await api.get('/user/map-history');
+      const historyData = response.data.data || [];
+      setVisitedProvinces(Array.isArray(historyData) ? historyData : []);
     } catch (err) {
       console.error('Error fetching map history:', err);
       setError('Không thể tải lịch sử ghé thăm');
+      setVisitedProvinces([]);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +69,7 @@ export default function Map() {
     setSuccess('');
 
     try {
-      await api.post('/api/user/check-in', {
+      await api.post('/user/check-in', {
         provinceName: selectedProvince
       });
 
@@ -83,10 +85,11 @@ export default function Map() {
   };
 
   const isVisited = (provinceName) => {
-    return visitedProvinces.some(v => v.provinceName === provinceName);
+    return Array.isArray(visitedProvinces) && visitedProvinces.some(v => v.provinceName === provinceName);
   };
 
   const getVisitDate = (provinceName) => {
+    if (!Array.isArray(visitedProvinces)) return null;
     const visit = visitedProvinces.find(v => v.provinceName === provinceName);
     return visit ? new Date(visit.visitedAt).toLocaleDateString('vi-VN') : null;
   };

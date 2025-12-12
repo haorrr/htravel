@@ -31,6 +31,26 @@ const Category = sequelize.define('Category', {
       },
     },
   },
+parentId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'categories',
+      key: 'id',
+    },
+    onDelete: 'SET NULL',
+    validate: {
+      notSelf(value) {
+        if (value && this.id && value === this.id) {
+          throw new Error('Category cannot be its own parent');
+        }
+      },
+    },
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
 }, {
   tableName: 'categories',
   timestamps: true,
